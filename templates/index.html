@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Complaint Analysis</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #f4f7fb;
+            font-family: Arial, sans-serif;
+        }
+
+        .message-card {
+            width: min(90%, 560px);
+            padding: 24px;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin: 0 0 16px;
+            font-size: 24px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+        }
+
+        textarea {
+            flex: 1;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        button {
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            background: #2563eb;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        .analysis-result,
+        .error-message,
+        .medical-note,
+        .submission-status {
+            margin: 16px 0 0;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .analysis-result {
+            background: #eff6ff;
+        }
+
+        .analysis-result p {
+            margin: 8px 0 0;
+        }
+
+        .error-message {
+            color: #991b1b;
+            background: #fef2f2;
+        }
+
+        .medical-note {
+            color: #475569;
+            background: #f8fafc;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <main class="message-card">
+        <h1>AI Complaint Analysis</h1>
+        <form id="analysis-form" method="post">
+            <textarea
+                name="message"
+                placeholder="Describe your symptoms..."
+                rows="4"
+                maxlength="2000"
+                autofocus
+                required
+            >{{ message }}</textarea>
+            <button type="submit">Analyze</button>
+        </form>
+        <p id="submission-status" class="submission-status" role="status"></p>
+        <div id="feedback" aria-live="polite">
+            {% if error %}
+            <p class="error-message">{{ error }}</p>
+            {% endif %}
+            {% if analysis %}
+            <section class="analysis-result">
+                <h2>Analysis Result</h2>
+                <p><strong>Detected Category:</strong> {{ analysis.detected_category }}</p>
+                <p><strong>Suggested Specialty:</strong> {{ analysis.suggested_specialty }}</p>
+            </section>
+            {% endif %}
+        </div>
+        <p class="medical-note">This is not a diagnosis. Seek urgent medical care for severe or rapidly worsening symptoms.</p>
+    </main>
+    <script>
+        const form = document.getElementById("analysis-form");
+        const submitButton = form.querySelector('button[type="submit"]');
+        const status = document.getElementById("submission-status");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            submitButton.disabled = true;
+            status.textContent = "Analyzing your symptoms...";
+
+            try {
+                const response = await fetch(form.action || window.location.href, {
+                    method: "POST",
+                    body: new FormData(form),
+                });
+                if (!response.ok) {
+                    throw new Error("The request could not be completed.");
+                }
+
+                const responseDocument = new DOMParser().parseFromString(
+                    await response.text(),
+                    "text/html"
+                );
+                const feedback = responseDocument.getElementById("feedback");
+                const responseTextarea = responseDocument.querySelector(
+                    "#analysis-form textarea"
+                );
+                if (!feedback || !responseTextarea) {
+                    throw new Error("The response could not be displayed.");
+                }
+
+                document.getElementById("feedback").innerHTML = feedback.innerHTML;
+                form.querySelector("textarea").value = responseTextarea.value;
+                status.textContent = "";
+            } catch {
+                status.textContent = "Could not analyze your symptoms. Please try again.";
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
